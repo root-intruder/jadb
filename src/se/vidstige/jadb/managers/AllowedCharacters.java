@@ -1,5 +1,6 @@
 package se.vidstige.jadb.managers;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 public class AllowedCharacters {
@@ -11,7 +12,7 @@ public class AllowedCharacters {
     public static String probeCharacters(String s) {
         for (byte b : s.getBytes(StandardCharsets.UTF_8)) {
             if (b < 32 || b > 126) {
-                throw new IllegalArgumentException("Illegal character in argument. Character: " + new String(new byte[]{b}) + " is not allowed.");
+                throw new IllegalArgumentException("Illegal character in argument: " + s);
             }
         }
         return s;
