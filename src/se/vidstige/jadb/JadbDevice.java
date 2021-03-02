@@ -1,5 +1,6 @@
 package se.vidstige.jadb;
 
+import se.vidstige.jadb.managers.AllowedCharacters;
 import se.vidstige.jadb.managers.Bash;
 
 import java.io.*;
@@ -145,7 +146,7 @@ public class JadbDevice {
         StringBuilder shellLine = new StringBuilder(command);
         for (String arg : args) {
             shellLine.append(" ");
-            shellLine.append(Bash.quote(arg));
+            shellLine.append(Bash.quote(AllowedCharacters.probeCharacters(arg)));
         }
         return shellLine;
     }
