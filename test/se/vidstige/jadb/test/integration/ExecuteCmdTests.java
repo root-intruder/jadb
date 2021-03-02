@@ -10,20 +10,16 @@ import org.junit.runners.Parameterized;
 import se.vidstige.jadb.JadbConnection;
 
 import se.vidstige.jadb.JadbDevice;
-import se.vidstige.jadb.managers.PackageManager;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 @RunWith(Parameterized.class)
 public class ExecuteCmdTests {
@@ -32,16 +28,25 @@ public class ExecuteCmdTests {
 
     @Parameterized.Parameter
     public String input;
+    @Parameterized.Parameter(1)
+    public boolean expectException;
 
 
     @Parameterized.Parameters(name="Test {index} input={0}")
     public static Collection input() {
-        List<Object> list = new ArrayList<>();
-        list.addAll(Arrays.asList(new Object[]{"asd", "asf dsa", "sdf&g", "sd& fg", "da~f", "asd'as", "a¡f", "asüd", "adös tz"}));
-        for (int i = 32; i <= 126; i++) {
-            list.add(Character.toString((char)i));
-        }
-        return list;
+        return Arrays.asList(new Object[][]{
+                {"asd", false},
+                {"asf dsa", false},
+                {"sdf&g", false},
+                {"sd& fg", false},
+                {"da~f", false},
+                {"asd'as", false},
+                {"a¡f", true},
+                {"asüd", true},
+                {"adös tz", true},
+                {"⾀", true},
+                {"å", true},
+                {"æ", true }});
     }
 
     @BeforeClass
@@ -59,15 +64,7 @@ public class ExecuteCmdTests {
 
     @Test
     public void testExecuteWithSpecialChars() throws Exception {
-
-        if (containsNotAllowedUTFCode(input)) {
-            Assert.assertThrows(IllegalArgumentException.class, new ThrowingRunnable() {
-                @Override
-                public void run() throws Throwable {
-                    jadbDevice.execute("echo", input);
-                }
-            });
-        } else {
+        try {
             InputStream response = jadbDevice.execute("echo", input);
             ResponseReader responseReader = new ResponseReader(response);
             responseReader.start();
@@ -76,18 +73,11 @@ public class ExecuteCmdTests {
             //remove newline
             ret = ret.replaceAll("\n$", "");
             Assert.assertEquals(input, ret);
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(expectException);
         }
     }
 
-
-    private boolean containsNotAllowedUTFCode(String s) {
-        for (byte b : s.getBytes(StandardCharsets.UTF_8)) {
-            if (b < 32 || b > 126) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private class ResponseReader extends Thread {
         public String output;
