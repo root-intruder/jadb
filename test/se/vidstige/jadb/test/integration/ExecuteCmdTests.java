@@ -46,7 +46,8 @@ public class ExecuteCmdTests {
                 {"adös tz", true},
                 {"⾀", true},
                 {"å", true},
-                {"æ", true }});
+                {"æ", true },
+                {"{}", false}});
     }
 
     @BeforeClass
