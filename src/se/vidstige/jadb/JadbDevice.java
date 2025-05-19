@@ -3,6 +3,7 @@ package se.vidstige.jadb;
 import se.vidstige.jadb.managers.Bash;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -217,6 +218,88 @@ public class JadbDevice {
         try (FileOutputStream fileStream = new FileOutputStream(local)) {
             pull(remote, fileStream);
         }
+    }
+
+    public List<PortForwarding> listForwardedPorts() throws IOException, JadbException {
+        return listForwardings(false);
+    }
+
+    public List<PortForwarding> listReversedPorts() throws IOException, JadbException {
+        return listForwardings(true);
+    }
+
+    public void removeAllForwardedPorts() throws IOException, JadbException {
+        executePortForwardingCmd("host:", "killforward-all");
+    }
+
+    public void removeAllReversedPorts() throws IOException, JadbException {
+        executePortForwardingCmd("reverse:", "killforward-all");
+    }
+
+    public void removeForwardedPort(String local) throws IOException, JadbException {
+        executePortForwardingCmd("host:", "killforward:" + local);
+    }
+
+    public void removeReversedPort(String local) throws IOException, JadbException {
+        executePortForwardingCmd("reverse:", "killforward:" + local);
+    }
+
+    public void forwardPort(String local, String remote) throws IOException, JadbException {
+        forwardPort(local, remote, false);
+    }
+
+    public void forwardPort(String local, String remote, boolean noRebind) throws IOException, JadbException {
+        forward("host:", local, remote, noRebind);
+    }
+
+    public void reversePort(String remote, String local) throws IOException, JadbException {
+        reversePort(remote, local, false);
+    }
+
+    public void reversePort(String remote, String local, boolean noRebind) throws IOException, JadbException {
+        forward("reverse:", local, remote, noRebind);
+    }
+
+    private List<PortForwarding> listForwardings(boolean reverse) throws IOException, JadbException {
+        List<PortForwarding> forwardings = new ArrayList<>();
+        try (InputStream in = executePortForwardingCmd(reverse ? "reverse:" : "host:", "list-forward")) {
+            String[] lines = Stream.readAll(in, StandardCharsets.UTF_8).substring(4).split("\n");
+            for (String line : lines) {
+                forwardings.add(PortForwarding.from(line, reverse));
+            }
+        }
+        return forwardings;
+    }
+
+    private void forward(String hostPrefix, String arg1, String arg2, boolean noRebind) throws IOException, JadbException {
+        if (!isForwardTargetValid(arg1)) {
+            throw new JadbException("Invalid port:" + arg1);
+        }
+        if (!isForwardTargetValid(arg2)) {
+            throw new JadbException("Invalid port:" + arg2);
+        }
+        executePortForwardingCmd(hostPrefix, (noRebind ? "forward:norebind:" : "forward:") + arg1 + ";" + arg2);
+    }
+
+    private InputStream executePortForwardingCmd(String hostPrefix, String command) throws IOException, JadbException {
+        Transport transport = getTransport();
+        send(transport, hostPrefix + command);
+        return new BufferedInputStream(transport.getInputStream());
+    }
+
+    private static boolean isForwardTargetValid(String target) {
+        if (target.startsWith("tcp:")) {
+            String portStr = target.substring(4);
+            try {
+                int port = Integer.parseInt(portStr);
+                if (port < 0) {
+                    return false;
+                }
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void send(Transport transport, String command) throws IOException, JadbException {

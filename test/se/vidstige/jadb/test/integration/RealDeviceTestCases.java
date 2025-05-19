@@ -108,6 +108,37 @@ public class RealDeviceTestCases {
         System.out.write(bout.toByteArray());
     }
 
+    @Test()
+    public void testPortForwarding() throws Exception {
+        JadbDevice any = jadb.getAnyDevice();
+        any.removeAllForwardedPorts();
+        any.removeAllReversedPorts();
+
+        any.reversePort("tcp:9999", "tcp:9997");
+        any.reversePort("tcp:9996", "tcp:9998");
+        List<PortForwarding> reversedPorts = any.listReversedPorts();
+        Assert.assertEquals(2, reversedPorts.size());
+        Assert.assertEquals("tcp:9999", reversedPorts.get(0).getRemote());
+        Assert.assertEquals("tcp:9997", reversedPorts.get(0).getLocal());
+        Assert.assertEquals("tcp:9996", reversedPorts.get(1).getRemote());
+        Assert.assertEquals("tcp:9998", reversedPorts.get(1).getLocal());
+        any.removeReversedPort("tcp:9999");
+        any.removeReversedPort("tcp:9997");
+
+        any.forwardPort("tcp:9998", "tcp:9998");
+        List<PortForwarding> forwardedPorts = any.listForwardedPorts();
+        Assert.assertEquals(1, forwardedPorts.size());
+        Assert.assertEquals("tcp:9998", forwardedPorts.get(0).getRemote());
+        Assert.assertEquals("tcp:9998", forwardedPorts.get(0).getLocal());
+        any.removeForwardedPort("tcp:9998");
+    }
+
+    @Test(expected = JadbException.class)
+    public void testInvalidForwardingPort() throws Exception {
+        JadbDevice any = jadb.getAnyDevice();
+        any.forwardPort("tcp:-5000", "tcp:5000");
+    }
+
     @Test
     public void testScreenshot() throws Exception {
         JadbDevice any = jadb.getAnyDevice();
