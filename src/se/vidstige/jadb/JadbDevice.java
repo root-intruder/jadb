@@ -257,7 +257,7 @@ public class JadbDevice {
     }
 
     public void reversePort(String remote, String local, boolean noRebind) throws IOException, JadbException {
-        forward("reverse:", local, remote, noRebind);
+        forward("reverse:", remote, local, noRebind);
     }
 
     private List<PortForwarding> listForwardings(boolean reverse) throws IOException, JadbException {
